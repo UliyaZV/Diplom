@@ -1,1 +1,106 @@
-from django.contrib.auth import authenticatefrom rest_framework.authtoken.models import Tokenfrom rest_framework import status, genericsfrom rest_framework.permissions import IsAuthenticatedfrom rest_framework.response import Responsefrom rest_framework.views import APIViewfrom rest_framework.viewsets import ModelViewSetfrom posts.models import Post, Comment, Likefrom posts.permissions import IsOwnerOrReadOnlyfrom posts.serializers import (PostSerializer, CommentSerializer,                               RegisterSerializer, LoginSerializer)class RegisterView(generics.CreateAPIView):    serializer_class = RegisterSerializer    def post(self, request, *args, **kwargs):        serializer = self.get_serializer(data=request.data)        if serializer.is_valid():            user = serializer.save()            token, created = Token.objects.get_or_create(user=user)            return Response({                'user': {                    'username': user.username,                    'email': user.email,                },                'token': token.key            }, status=status.HTTP_201_CREATED)        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)class LoginView(generics.GenericAPIView):    serializer_class = LoginSerializer    def post(self, request, *args, **kwargs):        serializer = self.get_serializer(data=request.data)        if serializer.is_valid():            username = serializer.validated_data['username']            password = serializer.validated_data['password']            user = authenticate(username=username, password=password)            if user:                token, created = Token.objects.get_or_create(user=user)                return Response({                    'token': token.key,                    'user': {                        'username': user.username,                        'email': user.email,                    }                })            return Response({'error' : 'Неверные данные'},                            status=status.HTTP_401_UNAUTHORIZED)        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)class PostViewSet(ModelViewSet):    queryset = Post.objects.all()    serializer_class = PostSerializer    def get_permissions(self):        if self.action in ["create", "update", "partial_update", "destroy"]:            return [IsAuthenticated(), IsOwnerOrReadOnly()]        return [IsOwnerOrReadOnly()]    def perform_create(self, serializer):        serializer.save(author=self.request.user)class CommentViewSet(ModelViewSet):    queryset = Comment.objects.all()    serializer_class = CommentSerializer    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]    def perform_create(self, serializer):        serializer.save(post_id = self.kwargs['post_id'],                        author = self.request.user)class LikeView(APIView):    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]    def post(self, request, post_id):        user = self.request.user        try:            post = Post.objects.get(id=post_id)        except Post.DoesNotExist:            return Response({"Ошибка": "Пост не найден"},                            status = status.HTTP_404_NOT_FOUND)        if Like.objects.filter(post = post, author = request.user).exists():            return Response({"Ошибка": "Вы уже оценили этот пост"},                            status = status.HTTP_400_BAD_REQUEST)                       if not Like.objects.filter(post = post, author = request.user).exists():            Like.objects.create(post = post, author = request.user)        return Response(status = status.HTTP_200_OK)    def delete(self, request, post_id):        try:            like = Like.objects.get(post = post_id, author = request.user)        except Like.DoesNotExist:            return Response ({'detail': 'Like not found'},                             status = status.HTTP_404_NOT_FOUND)        like.delete()        return Response({'detail': 'Like deleted.'},                        status=status.HTTP_204_NO_CONTENT)
+from django.contrib.auth import authenticate
+from rest_framework.authtoken.models import Token
+from rest_framework import status, generics
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
+from posts.models import Post, Comment, Like
+from posts.permissions import IsOwnerOrReadOnly
+from posts.serializers import (PostSerializer, CommentSerializer,
+                               RegisterSerializer, LoginSerializer)
+
+
+class RegisterView(generics.CreateAPIView):
+    serializer_class = RegisterSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            token, created = Token.objects.get_or_create(user=user)
+            return Response({
+                'user': {
+                    'username': user.username,
+                    'email': user.email,
+                },
+                'token': token.key
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LoginView(generics.GenericAPIView):
+    serializer_class = LoginSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            username = serializer.validated_data['username']
+            password = serializer.validated_data['password']
+            user = authenticate(username=username, password=password)
+
+            if user:
+                token, created = Token.objects.get_or_create(user=user)
+                return Response({
+                    'token': token.key,
+                    'user': {
+                        'username': user.username,
+                        'email': user.email,
+                    }
+                })
+            return Response({'error': 'Неверные данные'},
+                            status=status.HTTP_401_UNAUTHORIZED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PostViewSet(ModelViewSet):
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAuthenticated(), IsOwnerOrReadOnly()]
+        return [IsOwnerOrReadOnly()]
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+
+
+class CommentViewSet(ModelViewSet):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+
+    def perform_create(self, serializer):
+        serializer.save(post_id=self.kwargs['post_id'],
+                        author=self.request.user)
+
+
+class LikeView(APIView):
+    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+
+    def post(self, request, post_id):
+        user = self.request.user
+        try:
+            post = Post.objects.get(id=post_id)
+        except Post.DoesNotExist:
+            return Response({"Ошибка": "Пост не найден"},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        if Like.objects.filter(post=post, author=request.user).exists():
+            return Response({"Ошибка": "Вы уже оценили этот пост"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if not Like.objects.filter(post=post, author=request.user).exists():
+            Like.objects.create(post=post, author=request.user)
+        return Response(status=status.HTTP_200_OK)
+
+    def delete(self, request, post_id):
+        try:
+            like = Like.objects.get(post=post_id, author=request.user)
+        except Like.DoesNotExist:
+            return Response({'detail': 'Like not found'},
+                            status=status.HTTP_404_NOT_FOUND)
+        like.delete()
+        return Response({'detail': 'Like deleted.'},
+                        status=status.HTTP_204_NO_CONTENT)
