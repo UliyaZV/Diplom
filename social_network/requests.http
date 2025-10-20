@@ -1,0 +1,123 @@
+# примеры API-запросов
+
+@baseUrl = http://localhost:8000/api
+
+# аутентификация
+POST {{baseUrl}}/login/
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "123"
+ 
+}
+
+###
+
+# Регистрация
+POST {{baseUrl}}/register/
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "email": "test@example.com",
+  "password": "yourpassword",
+  "password2": "yourpassword"
+ 
+}
+
+###
+
+# получение всех постов
+GET {{baseUrl}}/posts/
+Content-Type: application/json
+#Authorization: Token Admin 3c26ff733a183264f0dd1f7efe199a5b7e2212e6
+#Authorization: Token User1 174b624bcdb0e23a488b497ac2c3e3a880ab6cdd
+#Authorization: Token User2 0561c403ddd92604a292940816c5e78dbd5e647d
+
+###
+
+# получение поста
+GET {{baseUrl}}/posts/4/
+Content-Type: application/json
+
+###
+
+# создание поста
+POST {{baseUrl}}/posts/
+Content-Type: multipart/form-data; boundary=AaB03x
+Authorization: Token 0561c403ddd92604a292940816c5e78dbd5e647d
+
+--AaB03x
+Content-Disposition: form-data; name="text"
+
+Свадьба
+
+--AaB03x
+Content-Disposition: form-data; name="image"; filename="photo.jpg"
+Content-Type: image/jpeg
+
+< B:\Фото\100CANON\1.jpg
+--AaB03x--
+###
+
+# создание поста
+POST {{baseUrl}}/posts/
+Content-Type: application/json
+Authorization: Token 3c26ff733a183264f0dd1f7efe199a5b7e2212e6
+
+{
+  "text": "post from admin"
+}
+
+###
+
+# удаление поста admin
+DELETE {{baseUrl}}/posts/16/
+Authorization: Token 3c26ff733a183264f0dd1f7efe199a5b7e2212e6
+
+###
+
+# удаление поста user
+DELETE {{baseUrl}}/posts/9/
+Authorization: Token 0561c403ddd92604a292940816c5e78dbd5e647d
+
+###
+
+# создание коментариев 
+POST {{baseUrl}}/posts/15/comments/
+Content-Type: application/json
+Authorization: Token 3c26ff733a183264f0dd1f7efe199a5b7e2212e6
+
+{
+  "text": "a another comment from admin"
+}
+
+###
+
+# создание коментариев 
+POST {{baseUrl}}/posts/14/comments/
+Content-Type: application/json
+Authorization: Token 174b624bcdb0e23a488b497ac2c3e3a880ab6cdd
+
+{
+  "text": "another comment from user"
+}
+
+###
+
+# лайк к посту
+POST {{baseUrl}}/posts/15/likes/
+Content-Type: application/json
+#Authorization: Token 3c26ff733a183264f0dd1f7efe199a5b7e2212e6
+Authorization: Token 174b624bcdb0e23a488b497ac2c3e3a880ab6cdd
+#Authorization: Token 0561c403ddd92604a292940816c5e78dbd5e647d
+
+###
+
+# дизлайк к посту
+DELETE  {{baseUrl}}/posts/15/likes/
+Content-Type: application/json
+#Authorization: Token 3c26ff733a183264f0dd1f7efe199a5b7e2212e6
+Authorization: Token 174b624bcdb0e23a488b497ac2c3e3a880ab6cdd
+#Authorization: Token 0561c403ddd92604a292940816c5e78dbd5e647d
